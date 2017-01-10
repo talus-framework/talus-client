@@ -447,9 +447,9 @@ class TalusClient(object):
             yield slave
 
     def slave_delete(self, slave_id):
-            """Delete an os by ``os_id`` which may be the id or name
+            """Delete an slave by ``slave_id`` which may be the id or name
 
-            :os_id: The name or id of the os to delete
+            :slave_id: The name or id of the slave to delete
             """
             slave_ = self._name_or_id(Slave, slave_id)
 
