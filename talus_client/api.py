@@ -445,7 +445,19 @@ class TalusClient(object):
         """
         for slave in Slave.objects(api_base=self._api_base, **search):
             yield slave
-        
+
+    def slave_delete(self, slave_id):
+            """Delete an os by ``os_id`` which may be the id or name
+
+            :os_id: The name or id of the os to delete
+            """
+            slave_ = self._name_or_id(Slave, slave_id)
+
+            if slave_ is None:
+                raise errors.TalusApiError("Could not locate slave with name/id {!r}".format(slave_id))
+            if len(Image.objects(api_base=self._api_base, slave=slave_.id)) > 0:
+                raise errors.TalusApiError("Could not delete Slave, more than one image references it")
+            slave_.delete()
     # -------------------------
     # master handling
     # -------------------------
