@@ -314,7 +314,7 @@ class ImageCmd(TalusCmdBase):
                -d,--desc    A description of the image (default: "")
                -t,--tags    Tags associated with the image (default: [])
                  --shell    Forcefully drop into an interactive shell
-        -v,--vagrantfile    A vagrant file that will be used to congfigure the image
+        -v,--vagrantfile    A vagrant file that will be used to configure the image
         -i,--interactive    To interact with the imported image for setup (default: False)
 
         Examples:
@@ -518,7 +518,7 @@ class ImageCmd(TalusCmdBase):
             if "error" in image.status:
                 self.err("could not delete image due to: " + image.status["error"])
             else:
-                self.ok("image succesfully deleted")
+                self.ok("image successfully deleted")
         except Exception as e:
             # the model will no longer exist in the database, so image.refresh above
             # will raise an exception
