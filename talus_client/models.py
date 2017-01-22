@@ -384,7 +384,7 @@ class Image(TalusModel):
     fields = {
         "name": Field("", desc="The name of the image"),
         "os": RefField("OS", desc="The OS of the image"),
-        "desc": Field("", details=True, desc="The desctription for the image"),
+        "desc": Field("", details=True, desc="The description for the image"),
         "tags": Field([], desc="Tags for the image"),
         "status": Field({}, desc="The status for the image (don't touch)"),
         "base_image": RefField("Image", desc="The base image this image is based on"),
