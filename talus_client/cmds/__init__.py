@@ -25,6 +25,7 @@ ModelCmd = None
 
 ENABLED_COMMANDS = []
 
+
 class TalusMetaClass(type):
     def __init__(cls, name, bases, namespace):
         global ENABLED_COMMANDS
@@ -35,7 +36,8 @@ class TalusMetaClass(type):
 
         ENABLED_COMMANDS.append(cls)
 
-class TalusCmdBase(object,cmd.Cmd):
+
+class TalusCmdBase(object, cmd.Cmd):
     __metaclass__ = TalusMetaClass
 
     # to be overridden by inheriting classes
@@ -66,7 +68,7 @@ class TalusCmdBase(object,cmd.Cmd):
         """Return a plain version of the text with control chars removed
         """
         return self.ansi_escape.sub('', text)
-    
+
     def _nice_name(self, model, attr, show_id=True):
         if "name" in model._fields[attr].value:
             if show_id:
@@ -75,14 +77,14 @@ class TalusCmdBase(object,cmd.Cmd):
                 return "{}".format(model._fields[attr]["name"])
         else:
             return getattr(model, attr)
-    
+
     def _resolve_one_model(self, id_or_name, model, search, sort="-timestamps.created", default_id_search=None):
         if default_id_search is None:
             default_id_search = ["id", "name"]
 
         if id_or_name is not None and not id_or_name.startswith("+"):
             for default_compare in default_id_search:
-                res = model.find_one(**{default_compare:id_or_name})
+                res = model.find_one(**{default_compare: id_or_name})
                 if res is not None:
                     return res
             return None
@@ -97,7 +99,7 @@ class TalusCmdBase(object,cmd.Cmd):
         search["num"] = 1
         search["sort"] = sort
         return model.find_one(**search)
-    
+
     def _search_terms(self, parts, key_remap=None, user_default_filter=True, out_leftover=None, no_hex_keys=None):
         """Return a dictionary of search terms"""
 
@@ -171,26 +173,26 @@ class TalusCmdBase(object,cmd.Cmd):
             out_leftover.append(key)
 
         return search
-    
+
     def _actual_date(self, epoch):
         return datetime.datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M:%S")
-    
+
     def _rel_date(self, epoch):
         return arrow.get(epoch).humanize()
-    
+
     def _prep_model(self, model):
         if hasattr(model, "tags") and self._talus_user is not None and self._talus_user not in model.tags:
             model.tags.append(self._talus_user)
-    
+
     def _make_model_cmd(self, model, prompt_part="create"):
         res = ModelCmd(model, self._talus_host, self._talus_client)
         res.prompt = self.prompt[:-2] + ":" + prompt_part + "> "
         res._root = self._root
         return res
-    
+
     def _go_interactive(self, args):
-        return ("--shell" in args or (len(args) == 0 and not self._root.one_shot))
-    
+        return "--shell" in args or (len(args) == 0 and not self._root.one_shot)
+
     def ask(self, msg):
         msg = Colors.WARNING + msg + Colors.ENDC
         return raw_input(msg)
@@ -199,7 +201,8 @@ class TalusCmdBase(object,cmd.Cmd):
         """
         Print the message with a success/ok color
         """
-        msg = u"\n".join(Colors.OKGREEN + u"{}{}".format(u"[.]  ", line) + Colors.ENDC for line in unicode(msg).split("\n"))
+        msg = u"\n".join(
+            Colors.OKGREEN + u"{}{}".format(u"[.]  ", line) + Colors.ENDC for line in unicode(msg).split("\n"))
         print(msg)
 
     def out(self, msg, raw=False):
@@ -235,7 +238,7 @@ class TalusCmdBase(object,cmd.Cmd):
             return Colors.HEADER + self._prompt + Colors.ENDC
 
         return self._prompt
-    
+
     @prompt.setter
     def prompt(self, value):
         self._prompt = value
@@ -244,7 +247,7 @@ class TalusCmdBase(object,cmd.Cmd):
     def emptyline(self):
         """don't repeat the last successful command"""
         pass
-    
+
     def do_up(self, args):
         """Quit the current processor (move up a level)"""
         return True
@@ -252,16 +255,17 @@ class TalusCmdBase(object,cmd.Cmd):
     def do_quit(self, args):
         """Quit the program"""
         return True
+
     do_exit = do_quit
     do_exit.__doc__ = do_quit.__doc__
-    
+
     def cmdloop(self, *args, **kwargs):
         try:
             return cmd.Cmd.cmdloop(self, *args, **kwargs)
         except KeyboardInterrupt as e:
             self.err("cancelled")
             return True
-    
+
     def onecmd(self, *args, **kwargs):
         try:
             return cmd.Cmd.onecmd(self, *args, **kwargs)
@@ -296,12 +300,12 @@ class TalusCmdBase(object,cmd.Cmd):
             return func(" ".join(parts[1:]))
 
         self.err("Unknown command. Try the 'help' command.")
-    
+
     def completedefault(self, text, line, begidx, endidx):
         funcs = filter(lambda x: x.startswith("do_"), dir(self))
         res = filter(lambda x: x.startswith(text), funcs)
         return res
-    
+
     @classmethod
     def get_command_helps(cls):
         """Look for methods in this class starting with do_.
@@ -320,7 +324,7 @@ class TalusCmdBase(object,cmd.Cmd):
                     lines = doc.split("\n")
                     res[cmd] = lines[0].lstrip() + textwrap.dedent("\n".join(lines[1:]).expandtabs(4))
         return res
-    
+
     @classmethod
     def get_help(cls, args=None, abbrev=False, examples=False):
         args = "" if args is None else args
@@ -331,17 +335,17 @@ class TalusCmdBase(object,cmd.Cmd):
         if not cmd_specific:
             cmd_helps += "\n{name}\n{under}\n".format(
                 name=cls.command_name,
-                under=("-"*len(cls.command_name))
+                under=("-" * len(cls.command_name))
             )
         else:
             cmd = args.split(" ")[0]
 
-        for subcmd_name,subcmd_help in cls.get_command_helps().iteritems():
+        for subcmd_name, subcmd_help in cls.get_command_helps().iteritems():
             if cmd_specific and subcmd_name != cmd:
                 continue
 
             if not examples and "\nExamples:\n" in subcmd_help:
-                subcmd_help,_ = subcmd_help.split("\nExamples:\n")
+                subcmd_help, _ = subcmd_help.split("\nExamples:\n")
 
             lines = subcmd_help.split("\n")
             first_line = lines[0].lstrip()
@@ -359,14 +363,14 @@ class TalusCmdBase(object,cmd.Cmd):
                 cmd_helps += "\n\n" + "\n".join(spaces + x for x in lines[1:])
 
             cmd_helps += "\n"
-        
+
         return cmd_helps
-    
+
     def do_help(self, args):
         examples = (len(args) > 0)
 
         print(self.get_help(args=args, examples=examples))
-    
+
     # -----------------------------------
 
     def _argparser(self):
@@ -378,6 +382,7 @@ class TalusCmdBase(object,cmd.Cmd):
             return argparse.ArgumentParser(self.command_name + " " + caller_name.replace("do_", ""))
         else:
             return argparse.ArgumentParser(caller_name.replace("do_", ""))
+
 
 class TalusCmd(TalusCmdBase):
     """The main talus command. This is what is invoked when dropping
@@ -395,6 +400,7 @@ class TalusCmd(TalusCmdBase):
 
         self.one_shot = one_shot
 
+
 # auto-import all defined commands in talus/cmds/*.py
 
 this_dir = os.path.dirname(__file__)
@@ -405,6 +411,7 @@ for filename in glob.glob(os.path.join(this_dir, "*.py")):
     mod_name = basename.replace(".py", "")
     mod_base = __import__("talus_client.cmds", globals(), locals(), fromlist=[mod_name])
     mod = getattr(mod_base, mod_name)
+
 
 def make_cmd_handler(cls):
     def _handle_command(self, args):
@@ -418,6 +425,7 @@ def make_cmd_handler(cls):
             processor.cmdloop()
 
     return _handle_command
+
 
 def define_root_commands():
     for cls in ENABLED_COMMANDS:
@@ -434,4 +442,6 @@ def define_root_commands():
             handler.__doc__ = cls.__doc__
 
         setattr(TalusCmd, "do_" + cls.command_name, handler)
+
+
 define_root_commands()

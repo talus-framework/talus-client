@@ -1,24 +1,18 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import argparse
-import cmd
-from collections import deque
-import json
 import math
-import md5
 import os
 import shlex
-import sys
-from tabulate import tabulate
-import textwrap
+from collections import deque
 
-from talus_client.cmds import TalusCmdBase
-import talus_client.api
-import talus_client.errors as errors
-from talus_client.models import *
-import talus_client.utils as utils
 import colorama
+from tabulate import tabulate
+
+import talus_client.utils as utils
+from talus_client.cmds import TalusCmdBase
+from talus_client.models import *
+
 
 class CrashesCmd(TalusCmdBase):
     """The talus crash command processor
@@ -50,7 +44,7 @@ class CrashesCmd(TalusCmdBase):
         root_level_items = ["created", "tool", "tags", "job", "tool", "$where", "sort", "num", "skip"]
         new_search = {}
         new_search["type"] = "crash"
-        for k,v in search.iteritems():
+        for k, v in search.iteritems():
             if k in root_level_items:
                 new_search[k] = v
             else:
@@ -96,7 +90,7 @@ class CrashesCmd(TalusCmdBase):
             registers = crash.data.setdefault("registers", {})
             reg_list = []
             reg_colors = {}
-            for reg,val in registers.iteritems():
+            for reg, val in registers.iteritems():
                 reg = reg.lower()
 
                 pad_len = 8
@@ -122,7 +116,7 @@ class CrashesCmd(TalusCmdBase):
                     ))
                 colors.append(color)
 
-            for reg,color in reg_colors.iteritems():
+            for reg, color in reg_colors.iteritems():
                 crashing_instr = re.sub(r"\b" + reg + r"\b", color + reg + colorama.Style.RESET_ALL, crashing_instr)
 
             rows.append([
@@ -137,7 +131,7 @@ class CrashesCmd(TalusCmdBase):
             ])
 
         print(tabulate(rows, headers=headers))
-    
+
     def do_info(self, args, return_string=False, crash=None, show_details=False):
         """List detailed information about the crash.
 
@@ -174,7 +168,7 @@ class CrashesCmd(TalusCmdBase):
             root_level_items = ["created", "tags", "job", "tool", "$where", "sort", "num"]
             new_search = {}
             new_search["type"] = "crash"
-            for k,v in search.iteritems():
+            for k, v in search.iteritems():
                 if k in root_level_items:
                     new_search[k] = v
                 else:
@@ -215,7 +209,7 @@ class CrashesCmd(TalusCmdBase):
         reg_rows = []
         reg_rows_no_color = []
         registers = crash.data.setdefault("registers", {})
-        for reg,val in registers.iteritems():
+        for reg, val in registers.iteritems():
             reg = reg.lower()
             color = colors.popleft()
             reg_colors[reg] = color
@@ -223,7 +217,7 @@ class CrashesCmd(TalusCmdBase):
             reg_rows_no_color.append([reg, "{:8x}".format(val)])
             colors.append(color)
 
-        split = int(math.ceil(len(reg_rows)/2.0))
+        split = int(math.ceil(len(reg_rows) / 2.0))
         table1 = tabulate(reg_rows[:split]).split("\n")
         table1_no_color = tabulate(reg_rows_no_color[:split]).split("\n")
         table2 = tabulate(reg_rows[split:]).split("\n")
@@ -241,11 +235,10 @@ class CrashesCmd(TalusCmdBase):
                     fmt_string = "{:" + str(longest_t1) + "}  |  {}"
                     reg_lines.append(fmt_string.format(table1[x], table2[x]))
 
-        for reg,color in reg_colors.iteritems():
+        for reg, color in reg_colors.iteritems():
             crashing_instr = re.sub(r"\b" + reg + r"\b", color + reg + colorama.Style.RESET_ALL, crashing_instr)
 
         indent = "                  "
-
 
         arrow = ""
         asm_text = crash.data.setdefault("disassembly", [])
@@ -263,7 +256,7 @@ class CrashesCmd(TalusCmdBase):
                 line = " " * len(arrow) + line
 
             line_no_color = line
-            for reg,color in reg_colors.iteritems():
+            for reg, color in reg_colors.iteritems():
                 line = re.sub(r"\b" + reg + r"\b", color + reg + colorama.Style.RESET_ALL, line)
 
             has_arrow = (arrow in line)
@@ -280,15 +273,17 @@ class CrashesCmd(TalusCmdBase):
                     asm_rows_no_color.append(["", "", "", line_no_color])
                 else:
                     asm_rows.append(["-->" if has_arrow else "", "", match2.group(1), match2.group(2)])
-                    asm_rows_no_color.append(["-->" if has_arrow else "", "", no_color_match2.group(1), no_color_match2.group(2)])
+                    asm_rows_no_color.append(
+                        ["-->" if has_arrow else "", "", no_color_match2.group(1), no_color_match2.group(2)])
             else:
                 asm_rows.append(["-->" if has_arrow else "", match.group(1), match.group(2), match.group(3)])
-                asm_rows_no_color.append(["-->" if has_arrow else "", no_color_match.group(1), no_color_match.group(2), no_color_match.group(3)])
+                asm_rows_no_color.append(["-->" if has_arrow else "", no_color_match.group(1), no_color_match.group(2),
+                                          no_color_match.group(3)])
 
         table1 = asm_lines = tabulate(asm_rows).split("\n")
         table1_no_color = tabulate(asm_rows_no_color).split("\n")
         table2 = reg_lines
-        
+
         longest_t1 = max(len(x) for x in table1_no_color)
         asm_and_regs = []
 
@@ -317,10 +312,12 @@ Loaded Modules: \n{loaded_mods}
 Backtrace: \n{backtrace}
 Exploitability Details: \n{exploit_details}
             """.format(
-                stack            = "\n".join(detail_indent + x for x in crash.data.setdefault("stack", "").split("\n")),
-                loaded_mods        = "\n".join(detail_indent + x for x in crash.data.setdefault("loaded_modules", "").split("\n")),
-                backtrace        = "\n".join(detail_indent + x for x in crash.data.setdefault("backtrace", "").split("\n")),
-                exploit_details    = "\n".join(detail_indent + x for x in crash.data.setdefault("exploitability_details", "").split("\n")),
+                stack="\n".join(detail_indent + x for x in crash.data.setdefault("stack", "").split("\n")),
+                loaded_mods="\n".join(
+                    detail_indent + x for x in crash.data.setdefault("loaded_modules", "").split("\n")),
+                backtrace="\n".join(detail_indent + x for x in crash.data.setdefault("backtrace", "").split("\n")),
+                exploit_details="\n".join(
+                    detail_indent + x for x in crash.data.setdefault("exploitability_details", "").split("\n")),
             )
 
         res = """
@@ -335,25 +332,25 @@ Hash Major/Minor: {hash_major} {hash_minor}
 
 {asm_and_regs}{details}
         """.format(
-            id                = crash.id,
-            tags            = ",".join(crash.tags),
-            job                = self._nice_name(crash, "job"),
-            expl            = crash.data.setdefault("exploitability", "None"),
-            hash_major        = crash.data.setdefault("hash_major", "None"),
-            hash_minor        = crash.data.setdefault("hash_minor", "None"),
-            crash_instr        = crashing_instr,
-            crash_module    = crash.data.setdefault("crash_module", ""),
-            exception_code    = crash.data.setdefault("exception_code", 0),
-            reg_tables        = "\n".join(indent + x for x in reg_lines),
-            asm_and_regs    = "\n".join("    " + x for x in asm_and_regs),
-            details            = details,
+            id=crash.id,
+            tags=",".join(crash.tags),
+            job=self._nice_name(crash, "job"),
+            expl=crash.data.setdefault("exploitability", "None"),
+            hash_major=crash.data.setdefault("hash_major", "None"),
+            hash_minor=crash.data.setdefault("hash_minor", "None"),
+            crash_instr=crashing_instr,
+            crash_module=crash.data.setdefault("crash_module", ""),
+            exception_code=crash.data.setdefault("exception_code", 0),
+            reg_tables="\n".join(indent + x for x in reg_lines),
+            asm_and_regs="\n".join("    " + x for x in asm_and_regs),
+            details=details,
         )
 
         if not return_string:
             print(res)
         else:
             return res
-    
+
     def do_export(self, args):
         """Export crash information to the target directory. Crashes are identified using
         git-like syntax, ids, and/or search queries, as with the info commands:
@@ -387,7 +384,7 @@ Hash Major/Minor: {hash_major} {hash_minor}
         root_level_items = ["created", "tags", "job", "tool", "$where", "sort", "num", "dest"]
         new_search = {}
         new_search["type"] = "crash"
-        for k,v in search.iteritems():
+        for k, v in search.iteritems():
             if k in root_level_items:
                 new_search[k] = v
             else:
@@ -439,7 +436,7 @@ Hash Major/Minor: {hash_major} {hash_minor}
             f.write(txt_info.encode("utf-8"))
 
         for file_id in crash.data.setdefault("repro", []):
-            fname,data = self._talus_client.corpus_get(file_id)
+            fname, data = self._talus_client.corpus_get(file_id)
             if fname is None:
                 fname = file_id
 

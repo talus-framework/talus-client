@@ -29,8 +29,8 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncod
 from talus_client.models import *
 import talus_client.models
 
-class TalusClient(object):
 
+class TalusClient(object):
     """An api client that will communicate with Talus"""
 
     def __init__(self, api_base="http://localhost:8001", user=None):
@@ -41,25 +41,25 @@ class TalusClient(object):
         self._user = user
         # TODO this was annoying, revisit this
         talus_client.models.API_BASE = api_base
-    
+
     def model_iter(self, cls, **search):
         for item in cls.objects(api_base=self._api_base, **search):
             yield item
-    
+
     # -------------------------
     # fileset handling
     # -------------------------
-    
+
     def fileset_iter(self, **search):
         """Return an iterator that iterates over all existing OS models in Talus
         :returns: iterator
         """
         for fileset_ in FileSet.objects(api_base=self._api_base, **search):
             yield fileset_
-    
+
     def fileset_find(self, name_or_id, **search):
         return self._name_or_id(FileSet, name_or_id, **search)
-    
+
     def fileset_create(self, name, files):
         """Create a new fileset named ``name`` containing files ``files``
         """
@@ -73,7 +73,7 @@ class TalusClient(object):
         fileset.save()
 
         return fileset
-    
+
     def fileset_delete(self, fileset_id, all_files=False):
         """Delete an os by ``os_id`` which may be the id or name
         
@@ -119,28 +119,30 @@ class TalusClient(object):
 
         file_id = self._upload_file(file_path, api_endpoint="corpus", **extra_attrs)
         return file_id
-    
+
     def corpus_get(self, file_id):
         """Fetch the file with id ``file_id`` from the corpus
         """
         try:
             res = requests.get(self._api_base + "/api/corpus/{}".format(file_id))
         except requests.ConnectionError as e:
-            raise errors.TalusApiError("Could not connect to {}".format(self._api_base + "/api/corpus/{}".format(file_id)))
+            raise errors.TalusApiError(
+                "Could not connect to {}".format(self._api_base + "/api/corpus/{}".format(file_id)))
 
         if res.status_code // 100 != 2:
             raise errors.TalusApiError("Could not fetch corpus file with id {}".format(file_id), error=res.text)
 
         filename = res.headers["content-disposition"].split("attachment;")[1].strip().split("filename=")[1].strip()
-        return filename,res.text
-    
+        return filename, res.text
+
     def corpus_delete(self, file_id):
         """Delete the file with id ``file_id`` from the corpus
         """
         try:
             res = requests.delete(self._api_base + "/api/corpus/{}".format(file_id))
         except requests.ConnectionError as e:
-            raise errors.TalusApiError("Could not connect to {}".format(self._api_base + "/api/corpus/{}".format(file_id)))
+            raise errors.TalusApiError(
+                "Could not connect to {}".format(self._api_base + "/api/corpus/{}".format(file_id)))
 
         if res.status_code // 100 != 2:
             raise errors.TalusApiError("Could not delete corpus file with id {}".format(file_id), error=res.text)
@@ -158,7 +160,8 @@ class TalusClient(object):
         for image in Image.objects(api_base=self._api_base, **search):
             yield image
 
-    def image_import(self, image_path, image_name, os_id, desc="desc", tags=None, username="user", password="password", file_id=None):
+    def image_import(self, image_path, image_name, os_id, desc="desc", tags=None, username="user", password="password",
+                     file_id=None):
         """TODO: Docstring for import_image.
 
         :image_path: The path to the image to be uploaded
@@ -201,7 +204,7 @@ class TalusClient(object):
         image.save()
 
         return image
-    
+
     def image_configure(self, image_id_or_name, vagrantfile=None, user_interaction=False, kvm=False):
         """Configure the image with id ``image_id``. An instance of the image will
         be spun up which you can then configure. Shutting down the image will commit
@@ -217,10 +220,10 @@ class TalusClient(object):
             raise errors.TalusApiError("image with id or name {!r} not found".format(image_id_or_name))
             return
 
-        #if image.status["name"] != "ready":
-            #raise errors.TalusApiError("Image is not in ready state, cannot configure (state is {})".format(
-                #image.status["name"]
-            #))
+            # if image.status["name"] != "ready":
+            # raise errors.TalusApiError("Image is not in ready state, cannot configure (state is {})".format(
+            # image.status["name"]
+            # ))
 
         image.status = {
             "name": "configure",
@@ -231,8 +234,9 @@ class TalusClient(object):
         image.save()
 
         return image
-    
-    def image_create(self, image_name, base_image_id_or_name, os_id, desc="", tags=None, vagrantfile=None, user_interaction=False):
+
+    def image_create(self, image_name, base_image_id_or_name, os_id, desc="", tags=None, vagrantfile=None,
+                     user_interaction=False):
         """Create a new VM image based on an existing image.
 
         :image_name: The name of the new VM image (to be created)
@@ -253,7 +257,7 @@ class TalusClient(object):
 
         # essentially use the base_image as the base for the new image
         base_image.clear_id()
-        image = base_image 
+        image = base_image
         self._prep_model(image)
         # required
         image.name = image_name
@@ -277,7 +281,7 @@ class TalusClient(object):
         image.save()
 
         return image
-    
+
     def image_delete(self, image_id_or_name):
         """Delete the image with id ``image_id`` or name ``name``
 
@@ -307,10 +311,10 @@ class TalusClient(object):
         """
         for os_ in OS.objects(api_base=self._api_base, **search):
             yield os_
-    
+
     def os_find(self, name_or_id, **search):
         return self._name_or_id(OS, name_or_id, **search)
-    
+
     def os_delete(self, os_id):
         """Delete an os by ``os_id`` which may be the id or name
         
@@ -336,10 +340,10 @@ class TalusClient(object):
             filter_["type"] = type_
         for code in Code.objects(api_base=self._api_base, **filter_):
             yield code
-    
+
     def code_find(self, name_or_id, **search):
         return self._name_or_id(Code, name_or_id, **search)
-    
+
     def code_create(self, code_name, code_type, tags=None):
         """Create the code, and return the results"""
         data = {
@@ -360,9 +364,9 @@ class TalusClient(object):
 
         try:
             res = requests.post(self._api_base + "/api/code/create/",
-                data    = e,
-                headers    = {"Content-Type": e.content_type}
-            )
+                                data=e,
+                                headers={"Content-Type": e.content_type}
+                                )
         except requests.ConnectionError as e:
             raise errors.TalusApiError("Could not connect to {}".format(self._api_base + "/api/code/create"))
         if res.status_code // 100 != 2:
@@ -411,7 +415,7 @@ class TalusClient(object):
         task.limit = limit
         task.vm_max = self._total_seconds_from_string(vm_max)
         task.save()
-    
+
     def task_delete(self, task_id):
         """Delete a task by ``task_id`` which may be the id or name
         
@@ -421,7 +425,7 @@ class TalusClient(object):
         if task is None:
             raise errors.TalusApiError("Could not locate task with name/id {!r}".format(task_id))
         task.delete()
-        
+
     # -------------------------
     # result handling
     # -------------------------
@@ -433,7 +437,7 @@ class TalusClient(object):
         """
         for result in Result.objects(api_base=self._api_base, **search):
             yield result
-        
+
     # -------------------------
     # slave handling
     # -------------------------
@@ -458,6 +462,7 @@ class TalusClient(object):
             if len(Image.objects(api_base=self._api_base, slave=slave_.id)) > 0:
                 raise errors.TalusApiError("Could not delete Slave, more than one image references it")
             slave_.delete()
+
     # -------------------------
     # master handling
     # -------------------------
@@ -467,7 +472,7 @@ class TalusClient(object):
         if len(res) == 0:
             raise errors.TalusApiError("No master model has been created in the DB! Is it not running?")
         return res[0]
-        
+
     # -------------------------
     # job handling
     # -------------------------
@@ -482,15 +487,17 @@ class TalusClient(object):
         """
         for job in Job.objects(api_base=self._api_base, **search):
             yield job
-    
-    def job_create(self, task_name_or_id, image=None, name=None, params=None, priority=50, queue="jobs", limit=1, vm_max=None, network="whitelist", debug=False, tags=None):
+
+    def job_create(self, task_name_or_id, image=None, name=None, params=None, priority=50, queue="jobs", limit=1,
+                   vm_max=None, network="whitelist", debug=False, tags=None):
         """Create a new job (run a task)"""
         task = self._name_or_id(Task, task_name_or_id)
         if task is None:
             raise errors.TalusApiError("could not locate task with id/name {!r}".format(task_name_or_id))
 
         if task.image is None and image is None:
-            raise errors.TalusApiError("No image was defined in the task, and no image was specified. Give me mah image!")
+            raise errors.TalusApiError(
+                "No image was defined in the task, and no image was specified. Give me mah image!")
 
         if task.image is not None and image is None:
             image_obj = self._name_or_id(Image, task.image)
@@ -544,9 +551,9 @@ class TalusClient(object):
             job.tags += tags
 
         job.save()
-        
+
         return job
-    
+
     def job_cancel(self, job_name_or_id, job=None):
         """Cancel the job ``job_name_or_id`` in talus
 
@@ -562,7 +569,7 @@ class TalusClient(object):
         job.save()
 
         return job
-        
+
     # -------------------------
     # utility
     # -------------------------
@@ -575,9 +582,9 @@ class TalusClient(object):
         match = re.match(r'(\d+h)?(\d+m)?(\d+s)?', val)
 
         unit_mult = {
-            "h":60*60,
-            "m":60,
-            "s":1
+            "h": 60 * 60,
+            "m": 60,
+            "s": 1
         }
 
         total_seconds = 0
@@ -592,7 +599,7 @@ class TalusClient(object):
             total_seconds = int(val)
 
         return total_seconds
-    
+
     def _verify(self, prompt):
         while True:
             answer = raw_input(prompt)
@@ -609,15 +616,15 @@ class TalusClient(object):
         :base: the base dict
         :new: the new values for the dict
         :returns: the updated dict
-        """ 
-        for k,v in new.iteritems():
+        """
+        for k, v in new.iteritems():
             if isinstance(v, collections.Mapping):
                 r = self._dict_nested_updated(base.get(k, {}), v)
                 base[k] = r
             else:
                 base[k] = new[k]
         return base
-    
+
     def _name_or_id(self, cls, name_or_id, **extra):
         """Find model by name or id
 
@@ -644,6 +651,7 @@ class TalusClient(object):
 
         total_size = os.path.getsize(path)
         self.last_update = ""
+
         def print_progress(monitor):
             sys.stdout.write("\b" * len(self.last_update))
             percent = float(monitor.bytes_read) / monitor.len
@@ -657,7 +665,7 @@ class TalusClient(object):
             sys.stdout.write(update)
             sys.stdout.flush()
             self.last_update = update
-        
+
         data = {
             "file": (os.path.basename(path), open(path, "rb"), "application/octet-stream")
         }
@@ -670,11 +678,12 @@ class TalusClient(object):
             res = requests.post(
                 self._api_base + "/api/{}/".format(api_endpoint),
                 data=m,
-                headers={"Content-Type":e.content_type},
-                timeout=(60*60) # super long timeout for uploading massive files!
+                headers={"Content-Type": e.content_type},
+                timeout=(60 * 60)  # super long timeout for uploading massive files!
             )
         except requests.ConnectionError as e:
-            raise errors.TalusApiError("Could not connect to {}".format(self._api_base + "/api/{}/".format(api_endpoint)))
+            raise errors.TalusApiError(
+                "Could not connect to {}".format(self._api_base + "/api/{}/".format(api_endpoint)))
 
         # clear out the last of the progress percent that was printed
         print("\b" * len(self.last_update))
@@ -690,6 +699,6 @@ class TalusClient(object):
     def _api(self, path):
         """Join the api base with path"""
         return self._api_base + "/" + path
-    
+
     def _clean_path(self, path):
         return os.path.realpath(os.path.expanduser(path))

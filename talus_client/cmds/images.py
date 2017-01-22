@@ -13,8 +13,9 @@ import time
 from talus_client.cmds import TalusCmdBase
 import talus_client.api
 import talus_client.errors as errors
-from talus_client.models import Image,Field
+from talus_client.models import Image, Field
 from talus_client.utils import Colors
+
 
 class ImageCmd(TalusCmdBase):
     """The Talus images command processor
@@ -118,14 +119,14 @@ class ImageCmd(TalusCmdBase):
        Status: {status}
          Tags: {tags}
    Base Image: {base_image}""".format(
-            id = image.id,
-            name = image.name,
-            status = "{}{}".format(
+            id=image.id,
+            name=image.name,
+            status="{}{}".format(
                 status,
                 " ({})".format(image.status) if len(image.status) > 0 else ""
             ),
-            tags = ", ".join(image.tags),
-            base_image = self._nice_name(image, "base_image") if image.base_image is not None else None,
+            tags=", ".join(image.tags),
+            base_image=self._nice_name(image, "base_image") if image.base_image is not None else None,
         ))
 
         self._show_image_in_tree(image)
@@ -162,7 +163,8 @@ class ImageCmd(TalusCmdBase):
 
         max_line_length = len(max(lines, key=lambda x: len(self._plain_text((x["text"]))))["text"])
 
-        header_line = ("{:^" + str(max_line_length) + "}    {:20} {:30} {}").format("image name", "status", "id", "tags")
+        header_line = ("{:^" + str(max_line_length) + "}    {:20} {:30} {}").format("image name", "status", "id",
+                                                                                    "tags")
         print(header_line)
         print("-" * len(header_line))
 
@@ -174,7 +176,7 @@ class ImageCmd(TalusCmdBase):
 
             text_line = line["text"]
             text_line += (" " * (max_line_length - len(self._plain_text(line["text"]))))
-            print((u"{}    {:20} {:30} {}").format(
+            print(u"{}    {:20} {:30} {}".format(
                 text_line,
                 status,
                 line["image"].id,
@@ -187,7 +189,7 @@ class ImageCmd(TalusCmdBase):
         else:
             indent = Colors.OKBLUE + u"  └──" + Colors.ENDC
             if indent_level > 1:
-                indent = ("     " * (indent_level-1)) + indent
+                indent = ("     " * (indent_level - 1)) + indent
             indent += " "
 
         lines.append({
@@ -197,8 +199,7 @@ class ImageCmd(TalusCmdBase):
 
         if recurse:
             for child in image.children():
-                self._get_tree_lines(child, lines, indent_level+1)
-    
+                self._get_tree_lines(child, lines, indent_level + 1)
 
     def do_import(self, args):
         """Import an image into Talus
@@ -240,18 +241,18 @@ class ImageCmd(TalusCmdBase):
             args.name = os.path.basename(args.file)
 
         image = self._talus_client.image_import(
-            image_path    = args.file,
-            image_name    = args.name,
-            os_id        = args.os,
-            desc        = args.desc,
-            tags        = args.tags,
-            file_id        = args.file_id,
-            username    = args.username,
-            password    = args.password
+            image_path=args.file,
+            image_name=args.name,
+            os_id=args.os,
+            desc=args.desc,
+            tags=args.tags,
+            file_id=args.file_id,
+            username=args.username,
+            password=args.password
         )
 
         self._wait_for_image(image, args.interactive)
-    
+
     def do_edit(self, args):
         """Edit an existing image. Interactive mode only
         """
@@ -301,7 +302,7 @@ class ImageCmd(TalusCmdBase):
                 self.err(e.message)
 
             return
-    
+
     def do_create(self, args):
         """Create a new image in talus using an existing base image. Anything not explicitly
         specified will be inherited from the base image, except for the name, which is required.
@@ -343,14 +344,14 @@ class ImageCmd(TalusCmdBase):
                 model_cmd.add_field(
                     "interactive",
                     Field(True),
-                    lambda x,v: x.status.update({"user_interaction": v}),
+                    lambda x, v: x.status.update({"user_interaction": v}),
                     lambda x: x.status["user_interaction"],
                     desc="If the image requires user interaction for configuration",
                 )
                 model_cmd.add_field(
                     "vagrantfile",
                     Field(str),
-                    lambda x,v: x.status.update({"vagrantfile": open(v).read()}),
+                    lambda x, v: x.status.update({"vagrantfile": open(v).read()}),
                     lambda x: x.status["vagrantfile"],
                     desc="The path to the vagrantfile that will configure the image"
                 )
@@ -410,12 +411,12 @@ class ImageCmd(TalusCmdBase):
 
         error = False
         validation = {
-            "os"    : "You must set the os",
-            "base"    : "You must set the base",
-            "name"    : "You must set the name",
+            "os": "You must set the os",
+            "base": "You must set the base",
+            "name": "You must set the name",
         }
         error = False
-        for k,v in validation.iteritems():
+        for k, v in validation.iteritems():
             if getattr(args, k) is None:
                 self.err(v)
                 error = True
@@ -425,17 +426,17 @@ class ImageCmd(TalusCmdBase):
             return
 
         image = self._talus_client.image_create(
-            image_name            = args.name,
-            base_image_id_or_name = args.base,
-            os_id                 = args.os,
-            desc                  = args.desc,
-            tags                  = args.tags,
-            vagrantfile           = vagrantfile_contents,
-            user_interaction      = args.interactive
+            image_name=args.name,
+            base_image_id_or_name=args.base,
+            os_id=args.os,
+            desc=args.desc,
+            tags=args.tags,
+            vagrantfile=vagrantfile_contents,
+            user_interaction=args.interactive
         )
 
         self._wait_for_image(image, args.interactive)
-    
+
     def do_configure(self, args):
         """Configure an existing image in talus
 
@@ -483,7 +484,7 @@ class ImageCmd(TalusCmdBase):
             return
 
         self._wait_for_image(image, args.interactive)
-    
+
     def do_delete(self, args):
         """Attempt to delete the specified image. This may fail if the image is the
         base image for another image.
@@ -522,7 +523,7 @@ class ImageCmd(TalusCmdBase):
         except Exception as e:
             # the model will no longer exist in the database, so image.refresh above
             # will raise an exception
-            if "model no longer exists" in  str(e):
+            if "model no longer exists" in str(e):
                 self.ok("image successfully deleted!")
             else:
                 self.err("could not delete image")

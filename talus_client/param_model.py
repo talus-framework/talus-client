@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import cmd
-import json
-import os
-import pipes
 import shlex
-import sys
+
 from tabulate import tabulate
 
-import talus_client.utils as utils
-from talus_client.utils import Colors
-from talus_client.models import *
 from talus_client.cmds import TalusCmdBase
+from talus_client.models import *
+from talus_client.utils import Colors
+
 
 def nice_string(val):
     if isinstance(val, dict):
@@ -27,8 +23,9 @@ def nice_string(val):
         if not (32 <= ord(c) <= 126):
             val = repr(val)
             break
-    
+
     return val
+
 
 class ParameterCmd(TalusCmdBase):
     def __init__(self, params, code_model, talus_host=None, client=None):
@@ -42,20 +39,20 @@ class ParameterCmd(TalusCmdBase):
             self._param_infos[pinfo["name"]] = pinfo
 
         to_delete = []
-        for k,v in self._params.iteritems():
+        for k, v in self._params.iteritems():
             if k not in self._param_infos:
                 self.warn("previously set parameter {} does not exist anymore".format(k))
                 to_delete.append(k)
 
         for k in to_delete:
             del self._params[k]
-    
+
     def _cast_param_str(self, name, param):
         finfo = self._param_infos[name]
-    
+
     def complete_set(self, text, line, begidx, endidx):
         return filter(lambda x: x.startswith(text), self._param_infos.keys())
-    
+
     def do_set(self, args):
         """Set a parameter
         """
@@ -95,19 +92,19 @@ class ParameterCmd(TalusCmdBase):
 
     def _convert_val(self, param_type, vals):
         switch = {
-            "list"    : lambda x: list(x),
-            "tuple"   : lambda x: tuple(x),
+            "list": lambda x: list(x),
+            "tuple": lambda x: tuple(x),
             # TODO
             # "dict"  : lambda x: dict(x),
 
-            "int"     : lambda x: int(x[0]),
-            "float"   : lambda x: float(x[0]),
-            "str"     : lambda x: str(x[0]),
-            "unicode" : lambda x: unicode(x[0]),
-            "bool"    : self._to_bool,
+            "int": lambda x: int(x[0]),
+            "float": lambda x: float(x[0]),
+            "str": lambda x: str(x[0]),
+            "unicode": lambda x: unicode(x[0]),
+            "bool": self._to_bool,
         }
         return switch[param_type["type"]["name"]](vals)
-    
+
     def _handle_set_component(self, args, field_name, finfo):
         base_cls_name = finfo["type"]["name"]
 
@@ -149,7 +146,7 @@ class ParameterCmd(TalusCmdBase):
         processor.cmdloop()
 
         self._params[field_name] = {"class": component.name, "params": sub_params}
-    
+
     def _handle_set_fileset(self, args, field_name, finfo):
         files = list(self._talus_client.fileset_iter())
         if len(args) == 1 or args[1] != "--all":
@@ -168,7 +165,7 @@ class ParameterCmd(TalusCmdBase):
 
         fset = files[idx]
         self._params[field_name] = fset.id
-    
+
     def do_show(self, args):
         """Show the current fields and their values
         """
@@ -179,7 +176,7 @@ class ParameterCmd(TalusCmdBase):
             # components
             if isinstance(field_val, dict) and "params" in field_val:
                 field_val = "({}) {}".format(field_val["class"], field_val["params"])
-                
+
             field_val = nice_string(field_val)
             fields.append([
                 Colors.OKBLUE + pinfo["name"] + Colors.ENDC,
@@ -191,13 +188,13 @@ class ParameterCmd(TalusCmdBase):
         headers = ["name", "type", "value", "description"]
         headers = [Colors.BRIGHT + Colors.BLACK + x + Colors.ENDC for x in headers]
         print(tabulate(fields, headers=headers))
-    
+
     def do_done(self, args):
         """Be done setting parameters (aka done/quit/save/exit/up)
         """
         if self._validate_fields():
             return True
-    
+
     def _validate_fields(self):
         has_unset = self._print_unset_fields()
         if has_unset:
@@ -215,7 +212,7 @@ class ParameterCmd(TalusCmdBase):
             params = self._params
 
         unset_fields = False
-        for k,v in params.iteritems():
+        for k, v in params.iteritems():
             if isinstance(v, dict):
                 # is a component
                 # TODO this might bite us later if we allow dicts as parameter values...
@@ -228,11 +225,12 @@ class ParameterCmd(TalusCmdBase):
                     self.warn("{}{} is unset".format(path, k))
 
         return unset_fields
-    
+
     do_quit = do_done
     do_save = do_done
     do_exit = do_done
     do_up = do_done
+
 
 class ModelCmd(TalusCmdBase):
     def __init__(self, model, talus_host=None, client=None):
@@ -240,19 +238,22 @@ class ModelCmd(TalusCmdBase):
 
         self._model = model
         self._update_code_and_param_cmd()
-        
+
         self._shim_fields = {}
-    
+
     def _update_code_and_param_cmd(self):
         if isinstance(self._model, (Job, Task)):
             if isinstance(self._model, Job):
                 code = self._talus_client.code_find(self._talus_client.task_find(self._model.task).tool)
             elif isinstance(self._model, Task):
                 code = self._talus_client.code_find(self._model.tool)
+            else:
+                code = None
+
             self._param_cmd = ParameterCmd(self._model.params, code, self._talus_host, self._talus_client)
         else:
             self._param_cmd = None
-    
+
     def add_field(self, field_name, field_val, setter, getter, desc=""):
         self._shim_fields[field_name] = {
             "type": field_val,
@@ -260,7 +261,7 @@ class ModelCmd(TalusCmdBase):
             "getter": getter,
             "desc": desc
         }
-    
+
     def do_show(self, args):
         """Show the current fields and their values
         """
@@ -286,15 +287,15 @@ class ModelCmd(TalusCmdBase):
                 Colors.OKGREEN + field_val + Colors.ENDC,
                 field_desc,
             ])
-        headers=["name", "value", "description"]
+        headers = ["name", "value", "description"]
         headers = [Colors.BRIGHT + Colors.BLACK + x + Colors.ENDC for x in headers]
         print(tabulate(fields, headers=headers))
-    
+
     def complete_set(self, text, line, begidx, endidx):
         fields = filter(lambda x: x.startswith(text), self._model.fields.keys())
         fields += filter(lambda x: x.startswith(text), self._shim_fields.keys())
         return fields
-    
+
     def do_set(self, args):
         """Set parameter
         """
@@ -354,17 +355,17 @@ class ModelCmd(TalusCmdBase):
                     return
 
             # update the code ref
-            if (isinstance(self._model, Job) and field_name == "task"):
+            if isinstance(self._model, Job) and field_name == "task":
                 self._model.params = refd_model.params
                 self._update_code_and_param_cmd()
-            elif (isinstance(self._model, Task) and field_name == "tool"):
+            elif isinstance(self._model, Task) and field_name == "tool":
                 self._update_code_and_param_cmd()
         else:
             if len(args) < 2:
                 print("Error, you must supply a value to set {!r}".format(field_name))
                 return
 
-            if isinstance(field_cls.value, (list,tuple)):
+            if isinstance(field_cls.value, (list, tuple)):
                 field_value = args[1:]
             else:
                 field_value = args[1]
@@ -382,14 +383,13 @@ class ModelCmd(TalusCmdBase):
                 except Exception as e:
                     self.err(e.message)
                     return
-    
+
     def do_done(self, args):
         """Be done setting parameters (aka done/quit/save/exit/up)
         """
         return True
-    
+
     do_quit = do_done
     do_save = do_done
     do_exit = do_done
     do_up = do_done
-    

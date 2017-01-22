@@ -1,13 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-from bson import json_util
-import copy
 import json
-import os
-import re
 import sys
-
 
 try:
     import requests
@@ -21,16 +16,17 @@ except ImportError as e:
     print("Error! requests_toolbelt module could not be imported. Perhaps install it with\n\n    pip install requests-toolbelt")
     exit()
 
-from requests_toolbelt.multipart.encoder import MultipartEncoder
-
 import talus_client.errors as errors
 import talus_client.utils as utils
 
 # for the lazy
 API_BASE = "http://localhost:8000"
+
+
 def set_base(new_base):
     global API_BASE
     API_BASE = new_base
+
 
 class Field(object):
     def __init__(self, default_value=None, details=False, desc="", validation=None):
@@ -38,19 +34,19 @@ class Field(object):
         self.details = details
         self.desc = desc
         self.validation = validation
-    
+
     def get_val(self):
         return self.value
-    
+
     def dup(self):
         return self.__class__(self.get_val())
-    
+
     def validate(self, v):
         if self.validation is None:
             return True
 
         return self.validation(v)
-    
+
     def cast(self, v):
         if self.value is None:
             return v
@@ -66,22 +62,23 @@ class Field(object):
             return self.value.__getitem__(name)
         else:
             raise AttributeError
-    
+
     def __setitem__(self, name, value):
         if hasattr(self.value, "__setitem__"):
             return self.value.__setitem__(name, value)
         else:
             raise AttributeError
 
+
 class RefField(Field):
     def __init__(self, cls_name, default_value=None, details=False, search=None, desc=""):
         Field.__init__(self, default_value, details, desc=desc)
         self.cls_name = cls_name
         self.search = search
-    
+
     def get_ref_cls(self):
         return getattr(sys.modules[__name__], self.cls_name)
-    
+
     def get_val(self):
         if isinstance(self.value, dict) and "id" in self.value:
             return self.value["id"]
@@ -95,13 +92,14 @@ class RefField(Field):
             return "!" + self.value["$id"]["$oid"]
         return self.value
 
+
 class TalusModel(object):
     """The baseclass for Talus API models"""
 
     # the path of the model, e.g. "api/os"
     api_path = ""
     interactive_create_command = None
-    
+
     # the defined fields, with default values
     fields = {}
 
@@ -115,7 +113,7 @@ class TalusModel(object):
             base,
             cls.api_path
         )
-    
+
     @classmethod
     def headers(cls):
         res = ["id"]
@@ -126,12 +124,12 @@ class TalusModel(object):
         if "hostname" in cls.fields:
             res.append("hostname")
 
-        for k,v in cls.fields.iteritems():
+        for k, v in cls.fields.iteritems():
             if k in res or v.details:
                 continue
             res.append(k)
         return res
-    
+
     @classmethod
     def find_one(cls, api_base=None, **search):
         """Return the first matching model, or None if none matched
@@ -186,12 +184,12 @@ class TalusModel(object):
         :**fields: dictionary of the model's fields"""
         if len(fields) == 0:
             fields = {}
-            for k,v in self.fields.iteritems():
+            for k, v in self.fields.iteritems():
                 fields[k] = v.dup()
 
         self._populate(fields)
         object.__setattr__(self, "api_base", api_base)
-    
+
     # --------------------
     # other
     # --------------------
@@ -227,7 +225,7 @@ class TalusModel(object):
             raise errors.TalusApiError("Could not save model", error=res.text)
 
         self._populate(res.json())
-    
+
     def delete(self):
         """Delete this model
         """
@@ -235,7 +233,7 @@ class TalusModel(object):
         if res.status_code // 100 != 2:
             raise errors.TalusApiError("Could not delete model", error=res.text)
         self._fields = {}
-    
+
     def refresh(self):
         """Refresh the current model
         """
@@ -246,14 +244,14 @@ class TalusModel(object):
             raise errors.TalusApiError("Error! current model no longer exists!")
         update = matches[0]
         self._populate(update)
-    
+
     def _populate(self, fields):
         """Populate this model's values from the given fields
 
         :fields: a dict of field values
         """
         res = {}
-        for k,v in self.__class__.fields.iteritems():
+        for k, v in self.__class__.fields.iteritems():
             res[k] = v.dup()
             if k in fields:
                 if isinstance(fields[k], Field):
@@ -261,7 +259,7 @@ class TalusModel(object):
                 else:
                     res[k].value = fields[k]
 
-        for k,v in fields.iteritems():
+        for k, v in fields.iteritems():
             if k not in res:
                 if isinstance(v, Field):
                     res[k] = v.get_val()
@@ -269,20 +267,20 @@ class TalusModel(object):
                     res[k] = v
 
         object.__setattr__(self, "_fields", res)
-    
+
     def _filtered_fields(self):
         res = {}
-        for k,v in self._fields.iteritems():
+        for k, v in self._fields.iteritems():
             if isinstance(v, Field):
                 v = v.get_val()
             if v is None:
                 continue
             res[k] = v
         return res
-    
+
     def _id_url(self):
         return self.api_url(self.api_base) + self.id + "/"
-    
+
     def __iter__(self):
         """Used for printing the model in a table"""
         for name in self.headers():
@@ -290,7 +288,7 @@ class TalusModel(object):
             if isinstance(v, Field):
                 v = v.get_val()
             yield str(v)[0:40]
-    
+
     def __getattr__(self, name):
         if name in self._fields:
             if isinstance(self._fields[name], Field):
@@ -298,7 +296,7 @@ class TalusModel(object):
             else:
                 return self._fields[name]
         raise KeyError(name)
-    
+
     def __setattr__(self, name, value):
         if name not in self._fields:
             return object.__setattr__(self, name, value)
@@ -310,6 +308,7 @@ class TalusModel(object):
             self._fields[name].value = value
         else:
             self._fields[name] = value
+
 
 class Task(TalusModel):
     """The model for Tasks"""
@@ -323,10 +322,11 @@ class Task(TalusModel):
         "version": Field("", desc="The version of code the task should run on (leave blank for default)"),
         "timestamps": Field({}, details=True, desc="Timestamps (don't mess with this)"),
         "limit": Field(1, desc="Limit for the task (when does it finish?)"),
-        "vm_max": Field(60*30, desc="Max vm duration (s) before being forcefully terminated"), # seconds
+        "vm_max": Field(60 * 30, desc="Max vm duration (s) before being forcefully terminated"),  # seconds
         "network": Field("whitelist", desc="The network whitelist (E.g. 'whitelist:DOMAIN_1,IP_2,DOMAIN_3,...')"),
-        "tags" : Field([], desc="Tags associated with this task")
+        "tags": Field([], desc="Tags associated with this task")
     }
+
 
 class Job(TalusModel):
     """The model for running tasks ("Jobs")"""
@@ -339,17 +339,19 @@ class Job(TalusModel):
         "status": Field({}, desc="Status of the job (don't touch)"),
         "timestamps": Field({}, desc="Timestamps (don't touch)"),
         "queue": Field("", desc="The queue the job should be dripped into (normal use leave blank)"),
-        "priority": Field(50, desc="Priority of the job (0-100, 100 == highest priority)", validation=lambda x: 0 <= x <= 100 ), # 0-100
+        "priority": Field(50, desc="Priority of the job (0-100, 100 == highest priority)",
+                          validation=lambda x: 0 <= x <= 100),  # 0-100
         "limit": Field(1, desc="The limit for the task (when does it finish?)"),
         "progress": Field(desc="Current progress of the job (don't touch)"),
         "image": RefField("Image", desc="The image the job should run on"),
         "network": Field("whitelist", desc="The network whitelist (E.g. 'whitelist:DOMAIN_1,IP_2,DOMAIN_3,...')"),
         "debug": Field(False, desc="If the job should be run in debug mode (logs are always saved)"),
-        "vm_max": Field(60*30, desc="Max vm duration (s) before being forcefully terminated"), # seconds
+        "vm_max": Field(60 * 30, desc="Max vm duration (s) before being forcefully terminated"),  # seconds
         "errors": Field([], desc="Errors the job has accumulated"),
         "logs": Field([], desc="Debug logs for this job"),
-        "tags" : Field([], desc="Tags associated with this job")
+        "tags": Field([], desc="Tags associated with this job")
     }
+
 
 class Code(TalusModel):
     """The model for Tools/Components"""
@@ -362,8 +364,9 @@ class Code(TalusModel):
         "bases": Field([], desc="Bases of the component/tool class (don't touch, pulled from code)"),
         "desc": Field("", details=True, desc="The description of the component/tool (don't touch, pulled from code)"),
         "timestamps": Field({}, details=True, desc="Timestamps (don't touch)"),
-        "tags" : Field([], desc="Tags associated with this code")
+        "tags": Field([], desc="Tags associated with this code")
     }
+
 
 class OS(TalusModel):
     """The model for OS API objects"""
@@ -374,9 +377,10 @@ class OS(TalusModel):
         "version": Field("", desc="The version of the OS (E.g. '7' for Windows 7"),
         "type": Field("", desc="Only 'linux' or 'windows' are allowed", validation=lambda x: x in ["windows", "linux"]),
         "arch": Field("", desc="E.g. x64"),
-        "tags" : Field([], desc="Tags associated with this OS")
+        "tags": Field([], desc="Tags associated with this OS")
     }
-        
+
+
 class Image(TalusModel):
     """The model for Image API objects"""
     api_path = "api/image"
@@ -395,7 +399,8 @@ class Image(TalusModel):
     }
 
     def children(self):
-        return self.objects(base_image = self.id)
+        return self.objects(base_image=self.id)
+
 
 class Result(TalusModel):
     """The model for Result objects"""
@@ -407,8 +412,9 @@ class Result(TalusModel):
         "tool": Field("", desc="The tool that was run"),
         "data": Field({}, desc="The result data"),
         "created": Field(desc="When it was created"),
-        "tags" : Field([], desc="Tags associated with this result")
+        "tags": Field([], desc="Tags associated with this result")
     }
+
 
 class Master(TalusModel):
     """The model for Master API objects -- intended to be READ ONLY"""
@@ -419,6 +425,7 @@ class Master(TalusModel):
         "vms": Field([], desc="A list of running vms on the master (for configuration)"),
         "queues": Field({}, desc="A dict of priority queues and their contents"),
     }
+
 
 class Slave(TalusModel):
     """The model for Slave API objects -- intended to be READ ONLY"""
@@ -433,13 +440,14 @@ class Slave(TalusModel):
         "vms": Field([], desc="List of running vm information"),
     }
 
+
 class FileSet(TalusModel):
     """The model for FileSet API objects"""
     api_path = "api/fileset"
     fields = {
-        "name"            : Field("", desc="Name of the fileset"), 
-        "files"            : Field([], desc="List of fileids associated with this fileset"),
-        "timestamps"    : Field({}, desc="Timestamps for this fileset (don't touch)"),
-        "job"            : RefField("Job", desc="Job that generated this fileset (not required)"),
-        "tags"            : Field([], desc="Tags associated with this fileset")
+        "name": Field("", desc="Name of the fileset"),
+        "files": Field([], desc="List of fileids associated with this fileset"),
+        "timestamps": Field({}, desc="Timestamps for this fileset (don't touch)"),
+        "job": RefField("Job", desc="Job that generated this fileset (not required)"),
+        "tags": Field([], desc="Tags associated with this fileset")
     }

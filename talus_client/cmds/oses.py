@@ -1,113 +1,110 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import argparse
-import cmd
-import os
 import shlex
-import sys
+
 from tabulate import tabulate
 
-from talus_client.cmds import TalusCmdBase
 import talus_client.api
-import talus_client.errors as errors
+from talus_client.cmds import TalusCmdBase
 from talus_client.models import *
 
+
 class OsCmd(TalusCmdBase):
-	"""The Talus code command processor
-	"""
+    """The Talus code command processor
+    """
 
-	command_name = "os"
-	
-	def do_list(self, args):
-		"""List all operating system models defined in Talus
-		"""
-		parts = shlex.split(args)
+    command_name = "os"
 
-		search = self._search_terms(parts)
+    def do_list(self, args):
+        """List all operating system models defined in Talus
+        """
+        parts = shlex.split(args)
 
-		if "sort" not in search:
-			search["sort"] = "name"
+        search = self._search_terms(parts)
 
-		print(tabulate(self._talus_client.os_iter(**search), headers=OS.headers()))
+        if "sort" not in search:
+            search["sort"] = "name"
 
-	def do_create(self, args):
-		"""Create a new operating system model in Talus
+        print(tabulate(self._talus_client.os_iter(**search), headers=OS.headers()))
 
-		create -n NAME [--type TYPE] [-t TAG1,TAG2,..] [-v VERSION]
+    def do_create(self, args):
+        """Create a new operating system model in Talus
 
-		   -n,--name    The name of the new OS model (required, no default)
-		   -t,--type    The type of the OS mdoel (default: "windows")
-		   -a,--arch	The architecture of the OS (default: "x64")
-		-v,--version    The version of the new OS model (default: "")
+        create -n NAME [--type TYPE] [-t TAG1,TAG2,..] [-v VERSION]
 
-		Examples:
+           -n,--name    The name of the new OS model (required, no default)
+           -t,--type    The type of the OS mdoel (default: "windows")
+           -a,--arch	The architecture of the OS (default: "x64")
+        -v,--version    The version of the new OS model (default: "")
 
-		To create a new operating system model for an x64 Windows 7 OS:
+        Examples:
 
-		    os create -n "Windows 7 x64" -t windows -v 7 -a x64
-		"""
-		args = shlex.split(args)
-		if self._go_interactive(args):
-			os = OS()
-			self._prep_model(os)
-			os.version = ""
-			os.arch = "x64"
-			while True:
-				model_cmd = self._make_model_cmd(os)
-				cancelled = model_cmd.cmdloop()
-				if cancelled:
-					break
+        To create a new operating system model for an x64 Windows 7 OS:
 
-				error = False
-				if os.name is None or os.name.strip() == "":
-					self.err("You must give the OS a name")
-					error = True
+            os create -n "Windows 7 x64" -t windows -v 7 -a x64
+        """
+        args = shlex.split(args)
+        if self._go_interactive(args):
+            os = OS()
+            self._prep_model(os)
+            os.version = ""
+            os.arch = "x64"
+            while True:
+                model_cmd = self._make_model_cmd(os)
+                cancelled = model_cmd.cmdloop()
+                if cancelled:
+                    break
 
-				if os.type is None:
-					self.err("You must specify an os type (linux/windows)")
-					error = True
-				elif os.type not in ["linux", "windows"]:
-					self.err("Sorry man, os.type must be one of 'linux' or 'windows'")
-					error = True
+                error = False
+                if os.name is None or os.name.strip() == "":
+                    self.err("You must give the OS a name")
+                    error = True
 
-				if error:
-					continue
+                if os.type is None:
+                    self.err("You must specify an os type (linux/windows)")
+                    error = True
+                elif os.type not in ["linux", "windows"]:
+                    self.err("Sorry man, os.type must be one of 'linux' or 'windows'")
+                    error = True
 
-				try:
-					os.save()
-					self.ok("created new os {}".format(os.id))
-				except errors.TalusApiError as e:
-					self.err(str(e))
-				else:
-					break
-			return
+                if error:
+                    continue
 
-		parser = self._argparser()
-		parser.add_argument("--name", "-n")
-		parser.add_argument("--type", "-t", default="windows")
-		parser.add_argument("--version", "-v", default="")
-		parser.add_argument("--arch", "-a", default="x64")
+                try:
+                    os.save()
+                    self.ok("created new os {}".format(os.id))
+                except errors.TalusApiError as e:
+                    self.err(str(e))
+                else:
+                    break
+            return
 
-		args = parser.parse_args(args)
+        parser = self._argparser()
+        parser.add_argument("--name", "-n")
+        parser.add_argument("--type", "-t", default="windows")
+        parser.add_argument("--version", "-v", default="")
+        parser.add_argument("--arch", "-a", default="x64")
 
-		new_os = OS(self._talus_host)
-		new_os.name = args.name
-		new_os.type = args.type
-		new_os.version = args.version
-		new_os.arch = args.arch
+        args = parser.parse_args(args)
 
-		try:
-			new_os.save()
-			print("created")
-		except talus_client.errors.TalusApiError as e:
-			sys.stderr.write("Error saving OS: {}\n".format(e.message))
-	
-	def do_delete(self, args):
-		"""Delete an operating system model in Talus
+        new_os = OS(self._talus_host)
+        new_os.name = args.name
+        new_os.type = args.type
+        new_os.version = args.version
+        new_os.arch = args.arch
 
-		os delete <OS_ID_OR_NAME>
-		"""
-		args = shlex.split(args)
-		self._talus_client.os_delete(args[0])
-		print("deleted")
+        try:
+            new_os.save()
+            print("created")
+        except talus_client.errors.TalusApiError as e:
+            sys.stderr.write("Error saving OS: {}\n".format(e.message))
+
+    def do_delete(self, args):
+        """Delete an operating system model in Talus
+
+        os delete <OS_ID_OR_NAME>
+        """
+        args = shlex.split(args)
+        self._talus_client.os_delete(args[0])
+        print("deleted")
