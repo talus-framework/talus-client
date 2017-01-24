@@ -4,13 +4,21 @@
 
 Pip install this directory:
 
-	pip install ~/path/to/talus/src/talus_client
+	pip install --user ~/path/to/talus/src/talus_client
 
-This install the `talus_client` module in your python environment and
+This installs the `talus_client` module in your python environment and
 will also place the `talus` executable script in your path.
 
 At this point you should be able to run
 
 	talus
 
-And get a listing of the help
+At the talus> prompt, type 'help' for a listing of top level commands.
+
+To ensure connectivity to the talus-framework.
+```
+talus>master info
+
+talus>slave list
+```
+
