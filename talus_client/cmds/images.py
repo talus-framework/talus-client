@@ -493,6 +493,9 @@ class ImageCmd(TalusCmdBase):
         id_or_name    The ID or name of the image that is to be deleted
         """
         args = shlex.split(args)
+	if len(args) == 0:
+            raise errors.TalusApiError('delete requires an image name or image id')
+
         image = self._resolve_one_model(args[0], Image, {})
         if len(image.children()) > 0:
             error_message = "Cannot delete image {}! it has dependent snapshots!".format(
