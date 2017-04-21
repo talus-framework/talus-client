@@ -21,7 +21,7 @@ import talus_client.utils as utils
 import colorama
 
 class CrashesCmd(TalusCmdBase):
-    """The talus crash command processor
+    """The Talus crash command processor
     """
 
     command_name = "crash"

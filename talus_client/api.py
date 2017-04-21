@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import json
-import os
 import collections
 import datetime
-import mmap
-import re
-import requests
-import shlex
-import sys
 import time
 
 try:
@@ -24,7 +17,7 @@ except ImportError as e:
     print("Error! requests_toolbelt module could not be imported. Perhaps install it with\n\n    pip install requests-toolbelt")
     exit()
 
-from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncoderMonitor
+from requests_toolbelt.multipart.encoder import MultipartEncoderMonitor
 
 from talus_client.models import *
 import talus_client.models
@@ -369,6 +362,18 @@ class TalusClient(object):
             raise errors.TalusApiError("Could not create code!", error=res.text)
 
         return json.loads(res.text)
+
+    def code_delete(self, code_id):
+        """Delete code by ``code_id`` which may be the id or name
+
+         :code_id: The name or id of the code to delete
+         """
+        code_ = self._name_or_id(Code, code_id)
+
+        if code_ is None:
+            raise errors.TalusApiError("Could not locate code with name/id {!r}".format(code_id))
+        code_.delete()
+
 
     # -------------------------
     # task handling
