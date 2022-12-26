@@ -9,4 +9,4 @@ requests-toolbelt==0.5.1
 six==1.10.0
 tabulate==0.7.5
 talus-client==0.1
-wheel==0.24.0
+wheel==0.38.1
